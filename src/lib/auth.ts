@@ -1,8 +1,9 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+// lib/auth.ts
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions, User } from "next-auth";
 import bcrypt from "bcrypt";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // ✅ bikin type UserWithRole biar aman
 type UserWithRole = {
@@ -13,7 +14,7 @@ type UserWithRole = {
 };
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // ✅ Tidak pakai adapter, langsung JWT strategy
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -24,22 +25,38 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          // Query user dari Firestore berdasarkan email
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", credentials.email));
+          const querySnapshot = await getDocs(q);
 
-        if (!user || !user.password) return null;
+          if (querySnapshot.empty) {
+            return null;
+          }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
+          // Ambil user pertama yang match
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
 
-        // ✅ return dengan tipe jelas
-        return {
-          id: user.id,
-          email: user.email!,
-          name: user.name,
-          role: user.role as "admin" | "user",
-        } satisfies UserWithRole;
+          // Verify password (jika ada)
+          if (userData.password) {
+            const isValid = await bcrypt.compare(credentials.password, userData.password);
+            if (!isValid) return null;
+          }
+
+          // ✅ return dengan tipe jelas
+          return {
+            id: userDoc.id,
+            email: userData.email,
+            name: userData.name || null,
+            role: userData.role as "admin" | "user" || "user",
+          } satisfies UserWithRole;
+
+        } catch (error) {
+          console.error("Auth error:", error);
+          return null;
+        }
       },
     }),
   ],
@@ -58,10 +75,11 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.sub!;
-        session.user.role = token.role as "admin" | "user";
+        (session.user as any).id = token.sub!;
+        (session.user as any).role = token.role as "admin" | "user";
       }
       return session;
     },
   },
+  secret: process.env.NEXTAUTH_SECRET
 };

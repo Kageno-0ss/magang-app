@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
@@ -22,30 +21,40 @@ export async function POST(req: Request) {
       );
     }
 
-    // Hash password untuk backup storage
+    // Cek apakah user sudah ada
+    const userDocRef = doc(db, "users", email);
+    const existingUser = await getDoc(userDocRef);
+
+    if (existingUser.exists()) {
+      return NextResponse.json(
+        { error: "Email sudah terdaftar" },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const firebaseUser = userCredential.user;
+    // Buat unique ID
+    const userId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
-    // Simpan additional user data ke Firestore
+    // Simpan user data ke Firestore dengan email sebagai document ID
     const userData = {
-      id: firebaseUser.uid,
-      email: firebaseUser.email,
+      id: userId,
+      email: email,
       name: name,
+      password: hashedPassword, // Simpan hashed password untuk credentials login
       role: "user",
       emailVerified: false,
       createdAt: new Date().toISOString(),
-      // Jangan simpan password di Firestore (Firebase Auth sudah handle)
     };
 
-    await setDoc(doc(db, "users", firebaseUser.uid), userData);
+    await setDoc(userDocRef, userData);
 
     // Return user data (tanpa password)
     const responseUser = {
-      id: firebaseUser.uid,
-      email: firebaseUser.email,
+      id: userId,
+      email: email,
       name: name,
       role: "user"
     };
@@ -53,27 +62,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       success: true, 
       user: responseUser,
-      message: "User berhasil dibuat dengan Firebase Auth"
+      message: "User berhasil dibuat dengan Firestore"
     });
 
   } catch (error: any) {
     console.error("Register error:", error);
     
-    // Handle Firebase Auth specific errors
-    let errorMessage = "Register failed";
-    
-    if (error.code === 'auth/email-already-in-use') {
-      errorMessage = "Email sudah terdaftar";
-    } else if (error.code === 'auth/invalid-email') {
-      errorMessage = "Format email tidak valid";
-    } else if (error.code === 'auth/weak-password') {
-      errorMessage = "Password terlalu lemah";
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    }
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
     return NextResponse.json({ 
-      error: errorMessage 
+      error: "Register failed: " + errorMessage 
     }, { status: 500 });
   }
 }
