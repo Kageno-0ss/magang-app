@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server"; 
+import { NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import path from "path";
-import { prisma } from "@/lib/prisma";
+import { collection, addDoc, getDocs, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const skpd = formData.get("skpd") as string | null; // ⬅️ ambil SKPD dari input
+    const skpd = formData.get("skpd") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -26,23 +27,33 @@ export async function POST(req: Request) {
 
     await writeFile(filePath, buffer);
 
-    // Simpan metadata ke database
-    const savedFile = await prisma.fileUpload.create({
-      data: {
-        nama: file.name,
-        size: formatFileSize(file.size),
-        url: `/uploads/${file.name}`,
-        uploader: "User Biasa", // nanti bisa ambil dari auth
-        skpd: skpd ?? "Belum diisi", // ⬅️ simpan SKPD
-        status: "Menunggu",
-      },
-    });
+    // Simpan metadata ke Firestore
+    const fileData = {
+      nama: file.name,
+      size: formatFileSize(file.size),
+      url: `/uploads/${file.name}`,
+      uploader: "User Biasa", // nanti bisa ambil dari auth
+      skpd: skpd ?? "Belum diisi",
+      status: "Menunggu",
+      createdAt: new Date().toISOString(),
+      commentLink: null,
+      catatan: null
+    };
+
+    const docRef = await addDoc(collection(db, "fileUploads"), fileData);
+    
+    const savedFile = {
+      id: docRef.id,
+      ...fileData
+    };
 
     return NextResponse.json({ success: true, file: savedFile });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-  }
+} catch (error) {
+  console.error("Upload error:", error);
+  return NextResponse.json({ 
+    error: "Upload failed: " + (error as Error).message 
+  }, { status: 500 });
+}
 }
 
 // Helper format ukuran file
@@ -53,8 +64,23 @@ function formatFileSize(bytes: number) {
 }
 
 export async function GET() {
-  const files = await prisma.fileUpload.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(files);
+  try {
+    const q = query(
+      collection(db, "fileUploads"), 
+      orderBy("createdAt", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const files = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return NextResponse.json(files);
+} catch (error) {
+  console.error("Upload error:", error);
+  return NextResponse.json({ 
+    error: "Upload failed: " + (error as Error).message 
+  }, { status: 500 });
+}
 }
