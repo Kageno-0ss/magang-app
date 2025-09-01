@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build --no-lint",
+    "build": "next build --no-lint",
     "start": "next start",
-    "export": "next export",
-    "postinstall": "prisma generate"
+    "export": "next export"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
