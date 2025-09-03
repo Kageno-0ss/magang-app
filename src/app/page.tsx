@@ -12,11 +12,25 @@ export default function HomePage() {
   const role = session?.user?.role || "guest"; // "admin" | "user" | "guest"
 
   // Load data dari backend
-  useEffect(() => {
+useEffect(() => {
     if (status === "authenticated") {
       fetch("/api/upload")
         .then((res) => res.json())
-        .then((data) => setFiles(data));
+        .then((data) => {
+          console.log("API Response:", data);
+          // kalau backend return { files: [...] }
+          if (Array.isArray(data)) {
+            setFiles(data);
+          } else if (Array.isArray(data.files)) {
+            setFiles(data.files);
+          } else {
+            setFiles([]); // fallback biar gak error
+          }
+        })
+        .catch((err) => {
+          console.error("Fetch error:", err);
+          setFiles([]);
+        });
     }
   }, [status]);
 
