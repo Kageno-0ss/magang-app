@@ -9,28 +9,22 @@ export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [skpd, setSkpd] = useState<string>("");
 
-  const role = session?.user?.role || "guest"; // "admin" | "user" | "guest"
+  const role = session?.user?.role || "guest";
 
-  // Load data dari backend
-useEffect(() => {
+  useEffect(() => {
     if (status === "authenticated") {
       fetch("/api/upload")
         .then((res) => res.json())
         .then((data) => {
-          console.log("API Response:", data);
-          // kalau backend return { files: [...] }
           if (Array.isArray(data)) {
             setFiles(data);
           } else if (Array.isArray(data.files)) {
             setFiles(data.files);
           } else {
-            setFiles([]); // fallback biar gak error
+            setFiles([]);
           }
         })
-        .catch((err) => {
-          console.error("Fetch error:", err);
-          setFiles([]);
-        });
+        .catch(() => setFiles([]));
     }
   }, [status]);
 
@@ -89,18 +83,18 @@ useEffect(() => {
 
   if (status === "loading") {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Memuat...</p>
+      <main className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <p className="text-gray-400">Memuat...</p>
       </main>
     );
   }
 
   if (!session) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
-        <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-lg max-w-md text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Welcome</h1>
-          <p className="text-gray-600 mb-6">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+        <div className="bg-gray-800/80 backdrop-blur-md p-8 rounded-2xl shadow-xl max-w-md text-center border border-gray-700">
+          <h1 className="text-4xl font-extrabold mb-10 text-center text-white drop-shadow-lg">Welcome</h1>
+          <p className="text-gray-300 mb-6">
             Silakan login untuk mengakses aplikasi.
           </p>
           <a
@@ -115,20 +109,21 @@ useEffect(() => {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 py-10 px-4">
-      <h1 className="text-4xl font-extrabold mb-10 text-center text-blue-800 drop-shadow-md">
-        Daftar SKPD & Status Verifikasi
-      </h1>
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white py-10 px-4">
+      <h1 className="text-4xl font-extrabold mb-10 text-center text-white drop-shadow-lg">
+  Daftar SKPD & Status Verifikasi
+</h1>
+
 
       {/* Upload Box */}
       {(role === "user" || role === "admin") && (
-        <div className="max-w-lg mx-auto bg-white p-6 rounded-2xl shadow-lg mb-12">
+        <div className="max-w-lg mx-auto bg-gray-800 border border-gray-700 p-6 rounded-2xl shadow-lg mb-12">
           <form onSubmit={handleUpload} className="space-y-4">
             <input
               type="file"
               accept="application/pdf"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="block w-full text-sm text-gray-300 border border-gray-600 rounded-lg cursor-pointer bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
 
@@ -137,13 +132,13 @@ useEffect(() => {
               value={skpd}
               onChange={(e) => setSkpd(e.target.value)}
               placeholder="Masukkan nama SKPD"
-              className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="block w-full text-sm text-white border border-gray-600 rounded-lg px-3 py-2 bg-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
 
             {selectedFile && (
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                <p className="font-medium text-blue-700">{selectedFile.name}</p>
+              <div className="bg-gray-700 p-3 rounded-lg border border-gray-600 text-sm text-gray-300">
+                <p className="font-medium text-blue-400">{selectedFile.name}</p>
               </div>
             )}
 
@@ -157,11 +152,11 @@ useEffect(() => {
         </div>
       )}
 
-      {/* 📌 Tabel */}
+      {/* Tabel */}
       <div className="overflow-x-auto max-w-6xl mx-auto">
-        <table className="w-full text-sm text-left text-gray-600 border border-gray-200 rounded-lg shadow-md overflow-hidden">
-          <thead className="bg-gradient-to-r from-blue-600 to-blue-500 text-white uppercase text-xs">
-            <tr className="divide-x divide-blue-400">
+        <table className="w-full text-sm text-left border border-gray-700 rounded-lg overflow-hidden">
+          <thead className="bg-gray-700 text-blue-400 uppercase text-xs">
+            <tr className="divide-x divide-gray-600">
               <th className="px-6 py-3">Nama File</th>
               <th className="px-6 py-3">SKPD</th>
               <th className="px-6 py-3">Uploader</th>
@@ -170,13 +165,13 @@ useEffect(() => {
               {role === "admin" && <th className="px-6 py-3 text-center">Aksi</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-700">
             {files.map((file, idx) => (
               <tr
                 key={file.id}
                 className={`${
-                  idx % 2 === 0 ? "bg-blue-50" : "bg-white"
-                } hover:bg-blue-100 transition divide-x divide-gray-200`}
+                  idx % 2 === 0 ? "bg-gray-800" : "bg-gray-900"
+                } hover:bg-gray-700 transition divide-x divide-gray-700`}
               >
                 {/* Nama File */}
                 <td className="px-6 py-3">
@@ -184,14 +179,14 @@ useEffect(() => {
                     href={file.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-blue-600 hover:underline max-w-xs truncate"
+                    className="flex items-center gap-2 text-blue-400 hover:underline max-w-xs truncate"
                     title={file.nama}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="currentColor"
                       viewBox="0 0 24 24"
-                      className="w-5 h-5 text-red-600 flex-shrink-0"
+                      className="w-5 h-5 text-red-500 flex-shrink-0"
                     >
                       <path d="M6 2a2 2 0 0 0-2 2v16a2 
                                2 0 0 0 2 2h12a2 2 0 0 0 
@@ -209,10 +204,10 @@ useEffect(() => {
                 </td>
 
                 {/* SKPD */}
-                <td className="px-6 py-3">{file.skpd || "Belum diisi"}</td>
+                <td className="px-6 py-3 text-gray-300">{file.skpd || "Belum diisi"}</td>
 
                 {/* Uploader */}
-                <td className="px-6 py-3">{file.uploader}</td>
+                <td className="px-6 py-3 text-gray-300">{file.uploader}</td>
 
                 {/* Status & Komentar */}
                 <td className="px-6 py-3">
@@ -221,16 +216,16 @@ useEffect(() => {
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold w-fit ${
                           file.status === "Disetujui"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-900 text-green-400"
                             : file.status === "Ditolak"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-yellow-100 text-yellow-700"
+                            ? "bg-red-900 text-red-400"
+                            : "bg-yellow-900 text-yellow-400"
                         }`}
                       >
                         {file.status}
                       </span>
                       {file.catatan && (
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-gray-400 mt-1">
                           <span className="font-semibold">Komentar:</span>{" "}
                           {file.catatan}
                         </p>
@@ -258,19 +253,19 @@ useEffect(() => {
                       href={file.commentLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm"
+                      className="text-blue-400 hover:underline text-sm"
                     >
                       Link Komentar
                     </a>
                   ) : role === "admin" ? (
                     <button
                       onClick={() => handleAddCommentLink(file.id)}
-                      className="text-sm text-gray-500 italic hover:underline"
+                      className="text-sm text-gray-400 italic hover:underline"
                     >
                       Tambahkan Link Komentar
                     </button>
                   ) : (
-                    <span className="text-sm text-gray-400 italic">
+                    <span className="text-sm text-gray-500 italic">
                       Belum ada link komentar
                     </span>
                   )}
